@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aprendiendo Programacion dinamica</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #e74c3c;
+            --path: #27ae60;
+            --current: #f39c12;
+            --bg: #f4f7f6;
+            --cell-size: 50px; /* Celdas más grandes para ver bien */
+            --header-offset: 40px;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--primary); margin-bottom: 5px; display: flex; align-items: center; gap: 10px; }
+        p.subtitle { color: #666; margin-top: -5px; margin-bottom: 20px; }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1300px;
+            width: 98%;
+        }
+        
+        /* --- PANEL DE CONTROL (IZQUIERDA) --- */
+        .controls {
+            width: 250px;
+            flex-shrink: 0; 
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .input-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap;}
+        label { font-weight: bold; font-size: 0.85rem; color: var(--primary); flex: 1; }
+        input[type="text"] { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-transform: uppercase; font-family: monospace; font-weight: bold; }
+        input[type="number"] { width: 50px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 5px;
+            transition: transform 0.1s;
+        }
+        .btn-start { background-color: var(--primary); color: white; }
+        .btn-step { background-color: var(--current); color: white; }
+        .btn-auto { background-color: var(--accent); color: white; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.7; }
+
+        /* --- PANEL EDUCATIVO (CENTRO - NUEVO DISEÑO) --- */
+        .explanation-panel {
+            flex: 1;
+            min-width: 300px;
+            max-width: 450px;
+            background: #fff;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 500px; /* Altura fija para que no baile */
+            overflow: hidden;
+        }
+        
+        .exp-header {
+            background: var(--primary);
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        
+        .exp-content {
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .hypothesis-box {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            border-left: 4px solid #ccc;
+            background: #f9f9f9;
+            transition: all 0.3s;
+        }
+        .hypothesis-box.winner {
+            border-left-color: #2ecc71;
+            background: #e8f8f5;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .hypothesis-box strong { display: block; font-size: 0.85rem; color: #555; }
+        .score-calc { font-family: monospace; font-size: 1rem; color: #333; }
+        .reasoning { font-size: 0.85rem; color: #666; font-style: italic; margin-top: 4px; display: block;}
+
+        .winner .reasoning { color: #16a085; font-weight: bold; font-style: normal; }
+
+        /* --- VISUALIZACIÓN MATRIZ (DERECHA) --- */
+        .matrix-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .matrix-display-wrapper {
+            display: grid;
+            grid-template-columns: var(--header-offset) auto; 
+            grid-template-rows: var(--header-offset) auto;
+            gap: 0px;
+            border: 1px solid #ddd;
+        }
+
+        #empty-corner { grid-column: 1; grid-row: 1; background: #eee; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc;}
+        
+        #seq1-header {
+            grid-column: 2; grid-row: 1;
+            display: flex; overflow: hidden;
+            background: #eee; border-bottom: 1px solid #ccc;
+            padding-left: var(--cell-size);
+        }
+        #seq2-header {
+            grid-column: 1; grid-row: 2;
+            display: flex; flex-direction: column; overflow: hidden;
+            background: #eee; border-right: 1px solid #ccc;
+            padding-top: var(--cell-size);
+        }
+        
+        .char-label {
+            display: flex; align-items: center; justify-content: center;
+            font-family: monospace; font-weight: 900; font-size: 1.2rem; color: var(--primary);
+        }
+        #seq1-header .char-label { width: var(--cell-size); min-width: var(--cell-size); height: 100%; }
+        #seq2-header .char-label { height: var(--cell-size); min-height: var(--cell-size); width: 100%; }
+
+        .matrix-scroll-view {
+            grid-column: 2; grid-row: 2;
+            overflow: auto;
+            max-width: 500px;
+            max-height: 500px;
+            background: #f4f4f4;
+            position: relative;
+        }
+
+        .grid-container {
+            display: grid;
+            gap: 1px;
+            background-color: #bdc3c7;
+        }
+
+        .cell {
+            background-color: white;
+            width: var(--cell-size); height: var(--cell-size);
+            min-width: var(--cell-size); min-height: var(--cell-size);
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+            font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; color: #444;
+        }
+        
+        .cell-gap { background-color: #e0e0e0; color: #888; font-weight: normal; }
+        .cell-current { background-color: #fdebd0; box-shadow: inset 0 0 0 4px var(--current); z-index: 5; }
+        .cell-path { background-color: var(--path); color: white !important; }
+        
+        .arrow {
+            font-size: 10px; color: #95a5a6;
+            position: absolute; top: 3px; left: 3px;
+            pointer-events: none;
+        }
+        .cell-path .arrow { color: white; opacity: 0.8; }
+
+        /* --- RESULTADO --- */
+        #alignResult {
+            grid-column: 1 / -1;
+            margin-top: 15px;
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            text-align: center;
+            font-size: 1.2rem;
+            letter-spacing: 3px;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>🧬🖥️Programación Dinámica: Needleman-Wunsch - Máster Universitario en Bioinformática 🖥️🧬</h1>
+    
+    <div class="container">
+        <div class="controls">
+            <h3 style="margin-top:0">Configuración</h3>
+            <div class="input-row">
+                <label>Secuencia Superior:</label>
+                <input type="text" id="seq1" value="ATTGC">
+            </div>
+            <div class="input-row">
+                <label>Secuencia Lateral:</label>
+                <input type="text" id="seq2" value="AGGC">
+            </div>
+            <hr style="width:100%; border-top:1px solid #ddd; margin:10px 0;">
+            <div class="input-row"><label>Match (Iguales):</label><input type="number" id="scoreMatch" value="1"></div>
+            <div class="input-row"><label>Mismatch (Distintos):</label><input type="number" id="scoreMismatch" value="-1"></div>
+            <div class="input-row"><label>Gap (Hueco):</label><input type="number" id="scoreGap" value="-2"></div>
+            
+            <div style="margin-top:15px;">
+                <button class="btn-start" onclick="initMatrix()">🔄 1. Iniciar</button>
+                <button class="btn-step" id="btnStep" onclick="nextStep()" disabled>▶ 2. Siguiente Paso</button>
+                <button class="btn-auto" id="btnAuto" onclick="toggleAuto()" disabled>⏩ 3. Automático</button>
+            </div>
+        </div>
+
+        <div class="explanation-panel">
+            <div class="exp-header" id="expTitle">Panel de Explicación</div>
+            <div class="exp-content" id="expContent">
+                <p>Bienvenido. Este panel te explicará la lógica biológica detrás de cada número.</p>
+                <p>Configura las secuencias y pulsa <strong>Iniciar</strong>.</p>
+            </div>
+        </div>
+
+        <div class="matrix-area">
+            <div class="matrix-display-wrapper">
+                <div id="empty-corner"></div>
+                <div id="seq1-header"></div>
+                <div id="seq2-header"></div>
+                <div class="matrix-scroll-view">
+                    <div id="matrixContainer" class="grid-container"></div>
+                </div>
+            </div>
+            <div id="alignResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // Estado
+        let S1, S2;
+        let matchScore, mismatchScore, gapScore;
+        let matrix = [];
+        let i=0, j=0;
+        let phase = "IDLE"; 
+        let autoInterval = null;
+
+        // Elementos UI
+        const gridDiv = document.getElementById('matrixContainer');
+        const seq1Div = document.getElementById('seq1-header');
+        const seq2Div = document.getElementById('seq2-header');
+        const expTitle = document.getElementById('expTitle');
+        const expContent = document.getElementById('expContent');
+        const resDiv = document.getElementById('alignResult');
+        const btnStep = document.getElementById('btnStep');
+        const btnAuto = document.getElementById('btnAuto');
+
+        // Sync Scroll
+        document.querySelector('.matrix-scroll-view').addEventListener('scroll', function() {
+            seq1Div.scrollLeft = this.scrollLeft;
+            seq2Div.scrollTop = this.scrollTop;
+        });
+
+        function initMatrix() {
+            stopAuto();
+            S1 = document.getElementById('seq1').value.toUpperCase().trim();
+            S2 = document.getElementById('seq2').value.toUpperCase().trim();
+            if(!S1 || !S2) return alert("Faltan secuencias");
+
+            matchScore = parseInt(document.getElementById('scoreMatch').value);
+            mismatchScore = parseInt(document.getElementById('scoreMismatch').value);
+            gapScore = parseInt(document.getElementById('scoreGap').value);
+
+            // Reset
+            resDiv.style.display = 'none';
+            gridDiv.innerHTML = '';
+            matrix = [];
+            const nCols = S1.length + 1;
+            const nRows = S2.length + 1;
+
+            // Render Headers
+            seq1Div.innerHTML = '';
+            for(let c=0; c<S1.length; c++) seq1Div.innerHTML += `<div class="char-label">${S1[c]}</div>`;
+            seq2Div.innerHTML = '';
+            for(let r=0; r<S2.length; r++) seq2Div.innerHTML += `<div class="char-label">${S2[r]}</div>`;
+
+            // Build Grid
+            gridDiv.style.gridTemplateColumns = `repeat(${nCols}, var(--cell-size))`;
+
+            for(let r=0; r<nRows; r++) {
+                let row = [];
+                for(let c=0; c<nCols; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.id = `c-${r}-${c}`;
+                    gridDiv.appendChild(cell);
+                    row.push({val: null, dir: null});
+                }
+                matrix.push(row);
+            }
+
+            // Init Initialization
+            updateCell(0, 0, 0, null);
+            for(let c=1; c<nCols; c++) { 
+                updateCell(0, c, c*gapScore, 'left'); 
+                document.getElementById(`c-0-${c}`).classList.add('cell-gap');
+            }
+            for(let r=1; r<nRows; r++) { 
+                updateCell(r, 0, r*gapScore, 'up'); 
+                document.getElementById(`c-${r}-0`).classList.add('cell-gap');
+            }
+
+            i = 1; j = 1;
+            phase = "FILL";
+            btnStep.disabled = false;
+            btnAuto.disabled = false;
+
+            updateExplanation("INIT", null);
+        }
+
+        function nextStep() {
+            if(phase === "FILL") doFill();
+            else if(phase === "TRACE") doTrace();
+        }
+
+        function doFill() {
+            // Limpiar resaltados
+            document.querySelectorAll('.cell-current').forEach(e => e.classList.remove('cell-current'));
+
+            const cellDiv = document.getElementById(`c-${i}-${j}`);
+            cellDiv.classList.add('cell-current');
+            cellDiv.scrollIntoView({behavior: "smooth", block: "center", inline: "center"});
+
+            // Valores vecinos
+            const diagVal = matrix[i-1][j-1].val;
+            const upVal = matrix[i-1][j].val;
+            const leftVal = matrix[i][j-1].val;
+
+            // Letras
+            const charTop = S1[j-1];
+            const charLeft = S2[i-1];
+            const isMatch = charTop === charLeft;
+
+            // Calculo Scores
+            const sDiag = diagVal + (isMatch ? matchScore : mismatchScore);
+            const sUp = upVal + gapScore;
+            const sLeft = leftVal + gapScore;
+
+            // Ganador
+            const max = Math.max(sDiag, sUp, sLeft);
+            let dir = '';
+            if(max === sDiag) dir = 'diag';
+            else if(max === sUp) dir = 'up';
+            else dir = 'left';
+
+            // Actualizar
+            updateCell(i, j, max, dir);
+
+            // Explicación Detallada
+            updateExplanation("FILL", {
+                pos: [i,j],
+                chars: [charLeft, charTop],
+                vals: {diag: sDiag, up: sUp, left: sLeft},
+                prevs: {diag: diagVal, up: upVal, left: leftVal},
+                isMatch: isMatch,
+                winner: dir,
+                winnerScore: max
+            });
+
+            // Avanzar índices
+            j++;
+            if(j > S1.length) {
+                j = 1; i++;
+            }
+
+            if(i > S2.length) {
+                phase = "TRACE";
+                i = S2.length; j = S1.length;
+                btnStep.innerText = "👣 Trazar Camino";
+            }
+        }
+
+        function doTrace() {
+            document.querySelectorAll('.cell-current').forEach(e => e.classList.remove('cell-current'));
+            
+            const cell = matrix[i][j];
+            const div = document.getElementById(`c-${i}-${j}`);
+            div.classList.add('cell-path');
+            div.scrollIntoView({behavior: "smooth", block: "center", inline: "center"});
+
+            if(i===0 && j===0) {
+                phase = "DONE";
+                stopAuto();
+                finalize();
+                updateExplanation("DONE", null);
+                return;
+            }
+
+            updateExplanation("TRACE", {
+                pos: [i,j],
+                dir: cell.dir,
+                chars: (i>0 && j>0) ? [S2[i-1], S1[j-1]] : null
+            });
+
+            if(cell.dir === 'diag') { i--; j--; }
+            else if(cell.dir === 'up') i--;
+            else if(cell.dir === 'left') j--;
+        }
+
+        function updateCell(r, c, val, dir) {
+            matrix[r][c].val = val;
+            matrix[r][c].dir = dir;
+            const div = document.getElementById(`c-${r}-${c}`);
+            let arrow = '';
+            if(dir==='diag') arrow='↖';
+            if(dir==='up') arrow='↑';
+            if(dir==='left') arrow='←';
+            div.innerHTML = `<span class="arrow">${arrow}</span>${val}`;
+        }
+
+        function updateExplanation(mode, data) {
+            if(mode === "INIT") {
+                expTitle.innerText = "Fase 1: Inicialización";
+                expTitle.style.background = "#7f8c8d";
+                expContent.innerHTML = `
+                    <p>Hemos creado la "frontera de penalización".</p>
+                    <p>Observa la primera fila y columna (gris): los valores son negativos (-2, -4, -6...).</p>
+                    <p><strong>¿Por qué?</strong> Esto representa el costo biológico de empezar un alineamiento abriendo un hueco (gap) inmediato al principio de una secuencia.</p>
+                `;
+            }
+            else if(mode === "FILL") {
+                expTitle.innerText = `Calculando Celda [${data.pos}]`;
+                expTitle.style.background = "#f39c12";
+                
+                const type = data.isMatch ? "COINCIDENCIA (Match)" : "MUTACIÓN (Mismatch)";
+                const colorType = data.isMatch ? "green" : "red";
+
+                expContent.innerHTML = `
+                    <p style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:5px;">
+                        Comparando: <strong>${data.chars[0]}</strong> (Lateral) vs <strong>${data.chars[1]}</strong> (Superior)<br>
+                        Estado: <span style="color:${colorType}; font-weight:bold">${type}</span>
+                    </p>
+                    <p>Evaluamos 3 hipótesis evolutivas. ¿Cuál da el puntaje máximo?</p>
+                    
+                    <div class="hypothesis-box ${data.winner==='diag'?'winner':''}">
+                        <strong>1. Vienen de la Diagonal (Alineamiento)</strong>
+                        <div class="score-calc">${data.prevs.diag} + (${data.isMatch ? matchScore : mismatchScore}) = ${data.vals.diag}</div>
+                        <span class="reasoning">Hipótesis: Las bases son homólogas (evolucionaron una de la otra).</span>
+                    </div>
+
+                    <div class="hypothesis-box ${data.winner==='up'?'winner':''}">
+                        <strong>2. Vienen de Arriba (Gap Vertical)</strong>
+                        <div class="score-calc">${data.prevs.up} + (${gapScore}) = ${data.vals.up}</div>
+                        <span class="reasoning">Hipótesis: La secuencia lateral tiene una base extra (inserción) o la superior perdió una (deleción).</span>
+                    </div>
+
+                    <div class="hypothesis-box ${data.winner==='left'?'winner':''}">
+                        <strong>3. Vienen de la Izquierda (Gap Horizontal)</strong>
+                        <div class="score-calc">${data.prevs.left} + (${gapScore}) = ${data.vals.left}</div>
+                        <span class="reasoning">Hipótesis: La secuencia superior tiene una base extra o la lateral perdió una.</span>
+                    </div>
+
+                    <div style="margin-top:10px; padding:10px; background:#eafaf1; border-radius:5px; color:#1d8348;">
+                        <strong>🏆 Decisión:</strong> Elegimos <strong>${data.winnerScore}</strong>.
+                        <br>La ruta más probable biológicamente es: 
+                        ${data.winner === 'diag' ? 'ALINEAR BASES' : 'INTRODUCIR HUECO'}.
+                    </div>
+                `;
+            }
+            else if(mode === "TRACE") {
+                expTitle.innerText = "Fase 2: Traceback (Reconstrucción)";
+                expTitle.style.background = "#27ae60";
+                
+                let explanation = "";
+                if(data.dir === 'diag') {
+                    explanation = "La flecha es <strong>DIAGONAL</strong>. <br>Esto significa que el puntaje máximo vino de <strong>alinear</strong> las dos letras. Las escribimos juntas en el resultado final.";
+                } else if(data.dir === 'up') {
+                    explanation = "La flecha va hacia <strong>ARRIBA</strong>. <br>Esto significa que era mejor 'saltar' una posición en la secuencia lateral. Ponemos un <strong>guion (-)</strong> en la secuencia superior para mantener el ritmo.";
+                } else if(data.dir === 'left') {
+                    explanation = "La flecha va hacia la <strong>IZQUIERDA</strong>. <br>Esto significa que era mejor 'saltar' una posición en la secuencia superior. Ponemos un <strong>guion (-)</strong> en la secuencia lateral.";
+                }
+
+                expContent.innerHTML = `
+                    <p>Posición actual: [${data.pos}]</p>
+                    <div style="font-size:2rem; text-align:center; margin:10px;">
+                        ${data.dir === 'diag' ? '↖' : (data.dir === 'up' ? '↑' : '←')}
+                    </div>
+                    <p>${explanation}</p>
+                `;
+            }
+            else if (mode === "DONE") {
+                expTitle.innerText = "¡Alineamiento Completado!";
+                expContent.innerHTML = "<p>Hemos llegado al origen (0,0).</p><p>El camino verde representa la serie de eventos evolutivos más probable (o con menor costo) que transforma una secuencia en la otra.</p>";
+            }
+        }
+
+        function finalize() {
+            // Reconstrucción rápida para mostrar resultado
+            let align1="", align2="";
+            let currI = S2.length, currJ = S1.length;
+            while(currI>0 || currJ>0) {
+                let dir = matrix[currI][currJ].dir;
+                if(dir==='diag') { align1 = S1[currJ-1]+align1; align2 = S2[currI-1]+align2; currI--; currJ--; }
+                else if(dir==='up') { align1 = "-"+align1; align2 = S2[currI-1]+align2; currI--; }
+                else if(dir==='left') { align1 = S1[currJ-1]+align1; align2 = "-"+align2; currJ--; }
+                else break;
+            }
+            resDiv.style.display = 'block';
+            resDiv.innerHTML = `<div>${align1}</div><div>${align2}</div>`;
+        }
+
+        function toggleAuto() {
+            if(autoInterval) stopAuto();
+            else {
+                btnAuto.innerText = "⏸ Pausar";
+                autoInterval = setInterval(() => {
+                    if(phase === "DONE") stopAuto();
+                    else nextStep();
+                }, 150); // Velocidad
+            }
+        }
+        function stopAuto() { clearInterval(autoInterval); autoInterval=null; btnAuto.innerText = "⏩ 3. Automático"; }
+
+        // Init
+        initMatrix();
+
+    </script>
+</body>
+</html>
