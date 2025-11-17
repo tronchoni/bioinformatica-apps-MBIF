@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Ventana Deslizante - Máster Universitario en Bioinformática - VIU</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --highlight: #f1c40f;
+            --bg: #f4f7f6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--primary); margin-bottom: 10px; }
+        p.subtitle { color: #666; max-width: 600px; text-align: center; margin-bottom: 30px; }
+        
+        .main-container {
+            display: flex;
+            gap: 20px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* Panel de Control */
+        .controls {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-weight: bold; font-size: 0.9rem; color: var(--primary); }
+        textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            resize: vertical;
+        }
+        .slider-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+        }
+        input[type=range] { width: 100%; cursor: pointer; }
+        .badge {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            float: right;
+        }
+
+        /* Área de Visualización */
+        .viz-area {
+            display: grid;
+            /* Definimos una cuadrícula: 
+               Columna 1: Secuencia Vertical (estrecha)
+               Columna 2: Gráfico (Canvas)
+               Fila 1: Secuencia Horizontal
+               Fila 2: Gráfico
+            */
+            grid-template-columns: 30px auto; 
+            grid-template-rows: 30px auto;
+            gap: 5px;
+            align-items: start;
+        }
+
+        /* Secuencias resaltadas */
+        .seq-display {
+            font-family: 'Courier New', monospace;
+            font-size: 18px; 
+            /* El tamaño de fuente debe coincidir o cuadrar con CELL_SIZE */
+            letter-spacing: 0; 
+            position: relative;
+        }
+
+        /* Secuencia Horizontal (Arriba) */
+        .seq-horizontal { 
+            grid-column: 2; /* Ocupa la segunda columna */
+            grid-row: 1;    /* Primera fila */
+            white-space: nowrap;
+            height: 20px; /* Igual a CELL_SIZE */
+            display: flex;
+        }
+
+        /* Secuencia Vertical (Izquierda) */
+        .seq-vertical { 
+            grid-column: 1; /* Primera columna */
+            grid-row: 2;    /* Segunda fila (al lado del canvas) */
+            width: 20px;    /* Igual a CELL_SIZE */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        /* El Canvas del DotPlot */
+        #dotplotCanvas {
+            grid-column: 2; /* Segunda columna */
+            grid-row: 2;    /* Segunda fila */
+            border: 1px solid #ccc;
+            cursor: crosshair;
+            background-color: white;
+            image-rendering: pixelated;
+        }
+
+        /* Caja de Información */
+        .info-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f4fc;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            max-width: 300px;
+        }
+        .info-box strong { color: var(--accent); }
+        
+        /* Estilos de celdas de texto */
+        .cell-char {
+            width: 20px;  /* CELL_SIZE */
+            height: 20px; /* CELL_SIZE */
+            line-height: 20px;
+            text-align: center;
+            display: inline-block;
+        }
+
+        /* Resaltado dinámico */
+        .highlighted-char {
+            background-color: var(--highlight);
+            font-weight: bold;
+        }
+        .match-char { color: green; font-weight: 900; }
+        .mismatch-char { color: red; opacity: 0.5; }
+
+    </style>
+</head>
+<body>
+
+    <h1>🔬🧬 Visor de Ventana Deslizante - Máster Universitario en Bioinformática </h1>
+    <p class="subtitle">Herramienta educativa para entender cómo el tamaño de ventana y el umbral de identidad limpian el ruido en las matrices de puntos.</p>
+
+    <div class="main-container">
+        <div class="controls">
+            <div class="input-group">
+                <label>Secuencia A (Horizontal - Eje X)</label>
+                <textarea id="seqA" rows="2">AGCTTAGGCTTAGGCA</textarea>
+            </div>
+            <div class="input-group">
+                <label>Secuencia B (Vertical - Eje Y)</label>
+                <textarea id="seqB" rows="2">AGCTTAGACTTAGGCA</textarea>
+            </div>
+            
+            <div class="slider-group">
+                <label>Tamaño de Ventana ($W$): <span id="valW" class="badge">3</span></label>
+                <input type="range" id="sliderW" min="1" max="15" value="3">
+                <small style="color:#666; display:block; margin-top:5px;">
+                    Caracteres a analizar simultáneamente.
+                </small>
+            </div>
+
+            <div class="slider-group">
+                <label>Umbral / Stringency ($T$): <span id="valT" class="badge">2</span></label>
+                <input type="range" id="sliderT" min="1" max="15" value="2">
+                <small style="color:#666; display:block; margin-top:5px;">
+                    Coincidencias mínimas requeridas dentro de la ventana para pintar el punto.
+                </small>
+            </div>
+
+            <div class="info-box" id="statusBox">
+                Mueve el mouse sobre la matriz para inspeccionar la ventana.
+            </div>
+            
+            <button onclick="loadExample()" style="padding:8px; cursor:pointer; background:var(--accent); color:white; border:none; border-radius:4px;">Cargar Ejemplo Ruido vs Señal</button>
+        </div>
+
+        <div class="viz-area">
+            <div id="displaySeqA" class="seq-display seq-horizontal"></div>
+            
+            <div id="displaySeqB" class="seq-display seq-vertical"></div>
+            <canvas id="dotplotCanvas" width="400" height="400"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Configuración
+        const canvas = document.getElementById('dotplotCanvas');
+        const ctx = canvas.getContext('2d');
+        const CELL_SIZE = 20; // Píxeles por celda/nucleótido (Debe coincidir con CSS)
+
+        // Elementos DOM
+        const inputSeqA = document.getElementById('seqA');
+        const inputSeqB = document.getElementById('seqB');
+        const sliderW = document.getElementById('sliderW');
+        const sliderT = document.getElementById('sliderT');
+        const valW = document.getElementById('valW');
+        const valT = document.getElementById('valT');
+        const displaySeqA = document.getElementById('displaySeqA');
+        const displaySeqB = document.getElementById('displaySeqB');
+        const statusBox = document.getElementById('statusBox');
+
+        // Inicialización
+        function init() {
+            addListeners();
+            updatePlot();
+        }
+
+        function addListeners() {
+            [inputSeqA, inputSeqB, sliderW, sliderT].forEach(el => {
+                el.addEventListener('input', updatePlot);
+            });
+            
+            // Evento interactivo del Mouse
+            canvas.addEventListener('mousemove', handleHover);
+            canvas.addEventListener('mouseleave', () => {
+                statusBox.innerHTML = "Mueve el mouse sobre la matriz para inspeccionar la ventana.";
+                renderHTMLSequences(); // Limpiar resaltados
+            });
+        }
+
+        // Lógica Principal
+        function updatePlot() {
+            const seqA = inputSeqA.value.toUpperCase().replace(/[^A-Z]/g, '');
+            const seqB = inputSeqB.value.toUpperCase().replace(/[^A-Z]/g, '');
+            const W = parseInt(sliderW.value);
+            const T = parseInt(sliderT.value);
+
+            if (parseInt(sliderT.value) > W) {
+                sliderT.value = W;
+            }
+            sliderT.max = W;
+            valW.textContent = W;
+            valT.textContent = T;
+
+            // Redimensionar canvas
+            canvas.width = seqA.length * CELL_SIZE;
+            canvas.height = seqB.length * CELL_SIZE;
+
+            // Renderizar secuencias en HTML (ejes)
+            renderHTMLSequences(seqA, seqB);
+
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Cuadrícula
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.beginPath();
+            for(let i=0; i<=seqA.length; i++) { ctx.moveTo(i*CELL_SIZE, 0); ctx.lineTo(i*CELL_SIZE, canvas.height); }
+            for(let j=0; j<=seqB.length; j++) { ctx.moveTo(0, j*CELL_SIZE); ctx.lineTo(canvas.width, j*CELL_SIZE); }
+            ctx.stroke();
+
+            // Algoritmo Ventana Deslizante
+            const limitA = seqA.length - W + 1;
+            const limitB = seqB.length - W + 1;
+
+            ctx.fillStyle = '#2c3e50';
+
+            for (let i = 0; i < limitA; i++) {
+                for (let j = 0; j < limitB; j++) {
+                    let matches = 0;
+                    for (let k = 0; k < W; k++) {
+                        if (seqA[i + k] === seqB[j + k]) matches++;
+                    }
+
+                    if (matches >= T) {
+                        ctx.beginPath();
+                        ctx.arc(
+                            (i * CELL_SIZE) + (CELL_SIZE/2), 
+                            (j * CELL_SIZE) + (CELL_SIZE/2), 
+                            CELL_SIZE/2.5, 0, Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function renderHTMLSequences(sA, sB, highlightStartA = -1, highlightStartB = -1, winSize = 0) {
+            const seqA = sA || inputSeqA.value.toUpperCase().replace(/[^A-Z]/g, '');
+            const seqB = sB || inputSeqB.value.toUpperCase().replace(/[^A-Z]/g, '');
+
+            let htmlA = "";
+            for(let i=0; i<seqA.length; i++) {
+                const isHighlight = (i >= highlightStartA && i < highlightStartA + winSize);
+                htmlA += `<div class="cell-char" style="${isHighlight ? 'background:var(--highlight);' : ''}">${seqA[i]}</div>`;
+            }
+            displaySeqA.innerHTML = htmlA;
+
+            let htmlB = "";
+            for(let i=0; i<seqB.length; i++) {
+                const isHighlight = (i >= highlightStartB && i < highlightStartB + winSize);
+                htmlB += `<div class="cell-char" style="${isHighlight ? 'background:var(--highlight);' : ''}">${seqB[i]}</div>`;
+            }
+            displaySeqB.innerHTML = htmlB;
+        }
+
+        function handleHover(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const col = Math.floor(x / CELL_SIZE);
+            const row = Math.floor(y / CELL_SIZE);
+            
+            const W = parseInt(sliderW.value);
+            const T = parseInt(sliderT.value);
+            const seqA = inputSeqA.value.toUpperCase().replace(/[^A-Z]/g, '');
+            const seqB = inputSeqB.value.toUpperCase().replace(/[^A-Z]/g, '');
+
+            if (col <= seqA.length - W && row <= seqB.length - W && col >=0 && row >=0) {
+                renderHTMLSequences(seqA, seqB, col, row, W);
+                updatePlot(); 
+                
+                // Cuadro resaltado en canvas
+                ctx.strokeStyle = 'rgba(241, 196, 15, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(col * CELL_SIZE, row * CELL_SIZE, W * CELL_SIZE, W * CELL_SIZE);
+
+                let comparisonHTML = "<strong>Comparación Ventana:</strong><br>";
+                let matches = 0;
+                
+                for(let k=0; k<W; k++) {
+                    const charA = seqA[col+k];
+                    const charB = seqB[row+k];
+                    const isMatch = charA === charB;
+                    if(isMatch) matches++;
+                    comparisonHTML += `<span class="${isMatch ? 'match-char' : 'mismatch-char'}">${charA}-${charB}</span> `;
+                }
+                
+                comparisonHTML += `<br><br>Coincidencias: <strong>${matches}</strong> / ${W}`;
+                comparisonHTML += `<br>Umbral: <strong>${T}</strong>`;
+                comparisonHTML += `<br>${matches >= T ? '<span style="color:green; font-weight:bold">✔ PUNTO</span>' : '<span style="color:red">✘ DESCARTADO</span>'}`;
+
+                statusBox.innerHTML = comparisonHTML;
+            }
+        }
+        
+        function loadExample() {
+            inputSeqA.value = "ATATGCGCGCATTTTTAGCTAGCTAGCTAGGGGG";
+            inputSeqB.value = "CCCCGCGCGCATTTTTAGCTAGCTAGCTAAAAAA";
+            sliderW.value = 5;
+            sliderT.value = 4;
+            updatePlot();
+        }
+
+        init();
+    </script>
+</body>
+</html>
