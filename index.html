@@ -1,78 +1,131 @@
 <!DOCTYPE html>
+
 <html lang="es">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Prácticas de Bioinformática</title>
+
     <style>
+
         body {
+
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
             background-color: #f4f7f6;
+
             display: flex;
+
             flex-direction: column;
+
             align-items: center;
+
             justify-content: center;
+
             height: 100vh;
+
             margin: 0;
+
             color: #2c3e50;
+
         }
+
         h1 { margin-bottom: 40px; }
+
         .menu-container {
+
             display: flex;
+
             gap: 20px;
+
             flex-wrap: wrap;
+
             justify-content: center;
+
         }
+
         .card {
+
             background: white;
+
             padding: 30px;
+
             border-radius: 12px;
+
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+
             text-align: center;
+
             width: 250px;
+
             transition: transform 0.2s;
+
             text-decoration: none;
+
             color: #333;
+
             border: 2px solid transparent;
+
         }
+
         .card:hover {
+
             transform: translateY(-5px);
+
             border-color: #3498db;
+
         }
-        /* Iconos de la imagen original */
-        .card .icon img {
-            width: 60px; /* Ajusta el tamaño si es necesario */
-            height: 60px;
-            display: block;
-            margin: 0 auto 15px auto; /* Centrar y margen inferior */
-        }
+
+        .icon { font-size: 40px; display: block; margin-bottom: 15px; }
+
         .title { font-weight: bold; font-size: 1.2rem; display: block; margin-bottom: 10px; }
+
         .desc { font-size: 0.9rem; color: #666; }
+
     </style>
+
 </head>
+
 <body>
+
+
 
     <h1>🧬 Laboratorio Virtual de Bioinformática</h1>
 
+
+
     <div class="menu-container">
+
         <a href="dotplot.html" class="card">
-            <span class="icon"><img src="https://tronchoni.github.io/bioinformatica-apps-MBIF/assets/icon-matrices-puntos.png" alt="Icono Matrices de Puntos"></span>
+
+            <span class="icon">📉</span>
+
             <span class="title">Matrices de Puntos</span>
+
             <span class="desc">Visualización de diagonales, ruido y alineamientos con Dot Plots.</span>
+
         </a>
+
+
 
         <a href="programacion_dinamica.html" class="card">
-            <span class="icon"><img src="https://tronchoni.github.io/bioinformatica-apps-MBIF/assets/icon-needleman.png" alt="Icono Needleman-Wunsch"></span>
+
+            <span class="icon">🧩</span>
+
             <span class="title">Needleman-Wunsch</span>
+
             <span class="desc">Alineamiento global paso a paso con Programación Dinámica.</span>
+
         </a>
-        
-        <a href="profundidad_vs_cobertura.html" class="card">
-            <span class="icon"><img src="https://tronchoni.github.io/bioinformatica-apps-MBIF/assets/icon-profundidad-cobertura.png" alt="Icono Profundidad vs Cobertura"></span>
-            <span class="title">Profundidad vs Cobertura</span>
-            <span class="desc">Análisis de la calidad de secuenciación de alto rendimiento (NGS).</span>
-        </a>
+
     </div>
 
+
+
 </body>
+
 </html>
